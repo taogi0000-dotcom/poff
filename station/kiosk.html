@@ -471,6 +471,11 @@ $('#resetCount').addEventListener('click',()=>{ store.set('poff-count',{day:ymd(
 $('#goIdle').addEventListener('click',()=>{ $('#op').close(); toIdle(); });
 $('#closeOp').addEventListener('click',()=>$('#op').close());
 tick(); toIdle();
+// test: open with #quick (e.g. http://localhost:8080/#quick) or press T → random answers, print right away
+function quickPrint(){ chatRun++; state.step=3; state.answers=[0,1,2].map(i=>Math.floor(Math.random()*D.qs[i].a.length)); finish(); }
+if(location.hash==='#quick') setTimeout(quickPrint,600);
+addEventListener('hashchange',()=>{ if(location.hash==='#quick') quickPrint(); });
+document.addEventListener('keydown',e=>{ if(!$('#op').open && e.key.toLowerCase()==='t') quickPrint(); });
 </script>
 </body>
 </html>
