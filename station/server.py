@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+# POFF RECEIPT station server for macOS
+# - serves the kiosk to the iPad on the same Wi-Fi
+# - receives each receipt (ESC/POS raster) and sends it to the USB receipt printer
+import base64, json, os, socket, subprocess, sys, tempfile, datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+PRINTER = os.environ.get('POFF_PRINTER', 'POFF_RECEIPT')
+PORT = int(os.environ.get('POFF_PORT', '8080'))
+DRY = os.environ.get('POFF_DRYRUN') == '1'
+HERE = os.path.dirname(os.path.abspath(__file__))
+HTML = open(os.path.join(HERE, 'kiosk.html'), encoding='utf-8').read().replace('</head>', '<script>window.POFF_SERVER=1</script></head>', 1).encode('utf-8')
+COUNT = 0
+
+def send_raw(data: bytes):
+    if DRY:
+        p = os.path.join(HERE, 'last_print.bin'); open(p, 'wb').write(data); return True, 'dry-run saved'
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.bin') as f:
+        f.write(data); path = f.name
+    try:
+        r = subprocess.run(['lp', '-d', PRINTER, '-o', 'raw', path], capture_output=True, text=True, timeout=20)
+        return r.returncode == 0, (r.stdout + r.stderr).strip()
+    finally:
+        try: os.unlink(path)
+        except OSError: pass
+
+def local_ip():
+    for iface in ('en0', 'en1'):
+        try:
+            ip = subprocess.run(['ipconfig', 'getifaddr', iface], capture_output=True, text=True, timeout=3).stdout.strip()
+            if ip: return ip
+        except Exception: pass
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.connect(('10.255.255.255', 1)); ip = s.getsockname()[0]; s.close(); return ip
+    except Exception:
+        return '127.0.0.1'
+
+class H(BaseHTTPRequestHandler):
+    def _send(self, code, body, ctype='application/json; charset=utf-8'):
+        if isinstance(body, str): body = body.encode('utf-8')
+        self.send_response(code); self.send_header('Content-Type', ctype); self.send_header('Content-Length', str(len(body)))
+        self.send_header('Cache-Control', 'no-store'); self.end_headers(); self.wfile.write(body)
+    def log_message(self, fmt, *args): pass
+    def do_GET(self):
+        if self.path in ('/', '/index.html', '/kiosk'):
+            return self._send(200, HTML, 'text/html; charset=utf-8')
+        if self.path == '/test':
+            data = b'\x1b@\x1ba\x01\x1d!\x11POFF\n\x1d!\x00TEST PRINT OK\n' + datetime.datetime.now().strftime('%Y-%m-%d %H:%M').encode() + b'\n\x1bd\x04\x1dVB\x00'
+            ok, msg = send_raw(data)
+            return self._send(200 if ok else 500, json.dumps({'ok': ok, 'msg': msg}))
+        if self.path == '/status':
+            try: st = subprocess.run(['lpstat', '-p', PRINTER], capture_output=True, text=True, timeout=5).stdout
+            except Exception as e: st = str(e)
+            return self._send(200, json.dumps({'printer': PRINTER, 'status': st, 'printed': COUNT}, ensure_ascii=False))
+        self._send(404, json.dumps({'ok': False}))
+    def do_POST(self):
+        global COUNT
+        if self.path != '/print': return self._send(404, json.dumps({'ok': False}))
+        try:
+            n = int(self.headers.get('Content-Length', '0'))
+            data = base64.b64decode(json.loads(self.rfile.read(n))['data'])
+            ok, msg = send_raw(data)
+            if ok: COUNT += 1
+            print(f"[{datetime.datetime.now():%H:%M:%S}] receipt #{COUNT if ok else '-'} {'OK' if ok else 'FAILED: ' + msg}", flush=True)
+            self._send(200 if ok else 500, json.dumps({'ok': ok, 'error': None if ok else msg}))
+        except Exception as e:
+            print('print error:', e, flush=True)
+            self._send(500, json.dumps({'ok': False, 'error': str(e)}))
+
+if __name__ == '__main__':
+    ip = local_ip()
+    print('=' * 52)
+    print('  POFF RECEIPT 스테이션 실행 중')
+    print(f'  아이패드 사파리에서 열기:  http://{ip}:{PORT}')
+    print(f'  프린터 테스트:            http://{ip}:{PORT}/test')
+    print('  끄려면 이 창에서 Control + C')
+    print('=' * 52, flush=True)
+    ThreadingHTTPServer(('0.0.0.0', PORT), H).serve_forever()
