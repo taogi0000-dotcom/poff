@@ -173,8 +173,8 @@ dialog h2{font-family:var(--display);font-weight:400;font-size:32px;margin:0 0 1
 kbd{display:inline-block;min-width:1.8em;text-align:center;border:2px solid var(--ink);border-radius:6px;padding:0 .3em;font-family:var(--body);font-weight:700;background:var(--paper)}
 
 @media print{
-  @page{size:57mm auto;margin:0}
-  .rc{zoom:calc(57/70)}
+  @page{size:58mm auto;margin:0}
+  .rc{zoom:calc(48/70)}
   body{background:#fff;overflow:visible}
   .rc{background:transparent!important}
   .screen,dialog,.status,.homebar{display:none!important}
@@ -379,7 +379,7 @@ function stubHTML(ms){
 /* ---- POFF station: print through the MacBook (server mode) ---- */
 const SERVER = !!window.POFF_SERVER;
 function toast(msg){ let t=document.getElementById('poffToast'); if(!t){ t=document.createElement('div'); t.id='poffToast'; t.style.cssText='position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:#171717;color:#fff;font:600 16px Pretendard,sans-serif;padding:12px 20px;border-radius:999px;z-index:9999;opacity:0;transition:opacity .3s'; document.body.appendChild(t);} t.textContent=msg; t.style.opacity=1; clearTimeout(t._h); t._h=setTimeout(()=>t.style.opacity=0,4000); }
-const PRINT_MM=57;   // printed width on paper (mm) · 8 dots per mm
+const PRINT_MM=48;   // printed width on paper (mm) · 8 dots per mm
 function rasterEscPos(canvas){
   const W=PRINT_MM*8, CW=W, OX=0, H=Math.round(canvas.height*CW/canvas.width);
   const c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
