@@ -16,13 +16,26 @@ echo "  찾은 USB 프린터:"
 i=1; for u in $URIS; do echo "   $i) $u"; i=$((i+1)); done
 if [ ${#URIS[@]} -eq 1 ]; then n=1; else read "n?  사용할 번호를 입력하세요: "; fi
 URI=${URIS[$n]}
+PPD=$(find /System/Library/Frameworks/ApplicationServices.framework -name Generic.ppd 2>/dev/null | head -1)
 sudo lpadmin -x POFF_RECEIPT 2>/dev/null
-sudo lpadmin -p POFF_RECEIPT -E -v "$URI" -m raw -o printer-is-shared=false 2>&1 | grep -v -i deprecat
+if [ -n "$PPD" ]; then
+  sudo lpadmin -p POFF_RECEIPT -E -v "$URI" -P "$PPD" -o printer-is-shared=false
+else
+  sudo lpadmin -p POFF_RECEIPT -E -v "$URI" -m raw -o printer-is-shared=false
+fi
+if ! lpstat -p POFF_RECEIPT >/dev/null 2>&1; then
+  echo ""
+  echo "  ✗ 프린터 등록에 실패했어요. 위 메시지를 캡처해서 보내 주세요."
+  read -k1 "?  아무 키나 누르면 닫혀요"; exit 1
+fi
 sudo cupsenable POFF_RECEIPT; sudo cupsaccept POFF_RECEIPT
 echo ""
 echo "  테스트 인쇄를 보내요..."
 printf '\x1b@\x1ba\x01\x1d!\x11POFF\n\x1d!\x00PRINTER READY\n\n\x1bd\x04\x1dVB\x00' > /tmp/poff_test.bin
-lp -d POFF_RECEIPT -o raw /tmp/poff_test.bin
+if ! lp -d POFF_RECEIPT -o raw /tmp/poff_test.bin; then
+  echo "  ✗ 테스트 인쇄를 보내지 못했어요. 위 메시지를 캡처해서 보내 주세요."
+  read -k1 "?  아무 키나 누르면 닫혀요"; exit 1
+fi
 echo ""
 echo "  ✓ 등록 완료! 프린터에서 'POFF / PRINTER READY'가 나오면 성공이에요."
 echo "    다음부터는 2_POFF_시작.command만 실행하면 돼요."
