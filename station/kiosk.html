@@ -115,8 +115,9 @@ body.dark .homebar{background:var(--white)}
 
 /* printing · download */
 #printing{background:#000;color:var(--white);align-items:center;justify-content:center;gap:6vw;padding:70px 5vw}
-@media (orientation:portrait){#printing{flex-direction:column;gap:4vh;padding:70px 8vw 80px}#printing .slot{width:min(56vw,380px);height:52vh}#printing .pmsg{text-align:center;max-width:620px}#printing .pickup{margin-left:auto;margin-right:auto}}
-.slot{position:relative;width:min(30vw,320px);height:78vh;flex-shrink:0;overflow:hidden}
+@media (orientation:portrait){#printing{flex-direction:column;gap:4vh;padding:70px 8vw 80px}#printing .slot{width:calc(70mm * var(--pz));height:52vh;margin:0 auto}#printing .pmsg{text-align:center;max-width:620px}#printing .pickup{margin-left:auto;margin-right:auto}}
+.slot{--pz:1.25;position:relative;width:calc(70mm * var(--pz));height:78vh;flex-shrink:0;overflow:hidden}
+#paperPreview .rc{zoom:var(--pz)}
 .slot::before{content:"";position:absolute;left:-4%;right:-4%;top:0;height:16px;background:#2e2e2e;border-radius:8px;z-index:2}
 .paper{position:absolute;left:0;top:8px;transform:translateY(-100%);animation:feed 2.6s steps(26) forwards}
 @keyframes feed{to{transform:translateY(0)}}
@@ -293,7 +294,7 @@ const store = {
   get(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
   set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 };
-const state = { step:0, answers:[], phoneAt:null, idleTimer:null, mode: store.get('poff-mode','print'), roll: store.get('poff-roll','#FFF3A6') };
+const state = { step:0, answers:[], phoneAt:null, idleTimer:null, mode: store.get('poff-mode','print'), roll: store.get('poff-roll-v2','#DDF2B0') };
 document.documentElement.style.setProperty('--roll', state.roll);
 const pad = n => String(n).padStart(2,'0');
 const hm = d => pad(d.getHours())+':'+pad(d.getMinutes());
@@ -507,7 +508,7 @@ document.addEventListener('keydown', e=>{
 let lp; $('#idle .logo').addEventListener('pointerdown',()=>{ lp=setTimeout(()=>{ refreshOp(); $('#op').showModal(); },1500); });
 ['pointerup','pointerleave'].forEach(ev=>$('#idle .logo').addEventListener(ev,()=>clearTimeout(lp)));
 document.querySelectorAll('#modeSeg button').forEach(b=>b.addEventListener('click',()=>{ state.mode=b.dataset.v; store.set('poff-mode',state.mode); refreshOp(); }));
-document.querySelectorAll('#rollSeg button').forEach(b=>b.addEventListener('click',()=>{ state.roll=b.dataset.v; store.set('poff-roll',state.roll); document.documentElement.style.setProperty('--roll',state.roll); refreshOp(); }));
+document.querySelectorAll('#rollSeg button').forEach(b=>b.addEventListener('click',()=>{ state.roll=b.dataset.v; store.set('poff-roll-v2',state.roll); document.documentElement.style.setProperty('--roll',state.roll); refreshOp(); }));
 $('#simPhone').addEventListener('click',()=>{ $('#op').close(); phoneToggle(); });
 $('#testPrint').addEventListener('click',()=>{ state.answers=[0,1,2]; doPrint(receiptHTML()); refreshOp(); });
 $('#resetCount').addEventListener('click',()=>{ store.set('poff-count',{day:ymd(new Date()),n:0,serial:0}); refreshOp(); });
