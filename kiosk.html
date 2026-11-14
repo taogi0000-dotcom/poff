@@ -441,10 +441,10 @@ async function serverPrint(){
         const scale=3*PRINT_MM*8/rc.getBoundingClientRect().width;   // render 3x, downsample → cleaner small text
         const canvas=await html2canvas(rc,{scale,backgroundColor:'#ffffff',logging:false});
         const r=await fetch('/print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:rasterEscPos(canvas)})});
-        const j=await r.json(); if(!j.ok) throw new Error(j.error||'print failed');
+        const j=await r.json(); if(!j.ok){ const err=new Error(j.error||'print failed'); err.user=j.error; throw err; }
       } finally { rc.style.background=bg; }
     }
-  }catch(e){ console.error(e); toast('프린터 연결을 확인해 주세요'); }
+  }catch(e){ console.error(e); toast(e.user || '프린터 연결을 확인해 주세요'); }
   finally{ root.setAttribute('style',prev); }
 }
 function doPrint(html){
